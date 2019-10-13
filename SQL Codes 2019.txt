@@ -1,0 +1,108 @@
+SELECT
+  STRFTIME_USEC(event_timestamp_micros+15*60*60*1000000, "%Y-%m-%d") as date,
+  user_name,
+  CASE WHEN (REGEXP(content_info.language,r'^(it)')) THEN 'Italian'
+       WHEN (REGEXP(content_info.language,r'^(nl)')) THEN 'Dutch'
+       WHEN (REGEXP(content_info.language,r'^(fr)')) THEN 'French'
+       WHEN (REGEXP(content_info.language,r'^(de)')) THEN 'German'
+       WHEN (REGEXP(content_info.language,r'^(ru)')) THEN 'Russian'
+       WHEN (REGEXP(content_info.language,r'^(es)')) THEN 'Spanish'
+       WHEN (REGEXP(content_info.language,r'^(pt)')) THEN 'Portuguese'
+       WHEN (REGEXP(content_info.language,r'^(pl)')) THEN 'Polish'
+       WHEN (REGEXP(content_info.language,r'^(tr)')) THEN 'Turkish'
+       ELSE 'Other' END AS language, 
+  client_type,
+  adsmanual_reviews.id as in_ads_type,
+COUNT(event_timestamp_micros + 15 * 60 * 60 * 1000000) as reviews,
+
+FROM
+  adsmanual_reviews.all reviews
+INNER JOIN (
+  SELECT
+    user_name, 
+    LEFT(location_code, 6) AS office
+  FROM 
+    PeopleView.Persons 
+  WHERE
+    LEFT(location_code, 6) = 'IE-DUB'
+    AND person_type != 'Employee'
+) AS ppl
+ON reviewer_id = ppl.user_name 
+WHERE 
+  client_type IN ('Ecommerce', 'B2B', 'B2C', 'Ads')
+  AND STRFTIME_USEC(review_request_timestamp_micros + 15 * 60 * 60 * 1000000, '%Y-%m') >= STRFTIME_USEC(DATE_ADD(now(), -1, 'MONTH'), '%Y-%m')
+GROUP BY 
+  office, date, user_name, language, client_type, ads_type
+ORDER BY 
+  office, user_name, date desc, language, client_type, ads_type;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+(SELECT 
+      
+      first_week_of_review,
+      context_vertical,
+      total_time_analyst,
+      total_time_leads,
+      total_time_manager,
+      total_time
+      
+      
+      FROM 
+        (SELECT
+          first_week_of_review,
+          language,
+          context_vertical,
+          //workflow,
+          CASE 
+            WHEN workflow in ("Analyst_Queue") 
+            THEN (sum(duration)/60)
+            ELSE 0
+            END as total_time_analyst,
+          CASE 
+            WHEN workflow in ("Leads_Queue") 
+            THEN (sum(duration)/60)
+            ELSE 0
+            END as total_time_leads,
+         CASE 
+            WHEN workflow in ("Manager_Queue") 
+            THEN (sum(duration)/60)
+            ELSE 0
+            END as total_time_manager,
+         CASE 
+            WHEN workflow in ("Manager_Queue") or workflow in ("Leads_Queue") or workflow in ("Analyst_Queue") 
+            THEN (sum(duration)/60)
+            ELSE 0
+            END as total_time,
+         
+         
+               
+       from test_ads  
+            WHERE  first_week_of_review >= '2017-06-25'
+                            
+      
+         group by first_week_of_review,
+                  language,
+                  context_vertical,
+                  workflow,
+          
+      )
+      
+      
+            
+ where context_vertical = "Mega Spanish"
+ 
+       
+                        
+GROUP BY
+      first_week_of_review,
+      context_vertical,
+      total_time_analyst,
+      total_time_leads,
+      total_time_manager,
+      total_time
+
+
+ Limit 20
+
+)         
